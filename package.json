@@ -1,0 +1,27 @@
+{
+  "name": "website-to-app-demo",
+  "version": "1.0.0",
+  "description": "一个将网站转换为桌面应用的简单示例",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dykVehicle/desktop-tutorial.git"
+  },
+  "keywords": [
+    "electron",
+    "demo",
+    "wrapper"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dykVehicle/desktop-tutorial/issues"
+  },
+  "homepage": "https://github.com/dykVehicle/desktop-tutorial#readme",
+  "devDependencies": {
+    "electron": "^39.2.7"
+  }
+}
