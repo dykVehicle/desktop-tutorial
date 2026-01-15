@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/useChatStore';
 import { callModelApi } from '../lib/api';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Send, CheckCircle2, Circle, AlertTriangle, Bot, GitCompare } from 'lucide-react';
-import { ChatTurn } from '../types';
+import type { ChatTurn } from '../types';
 
 export const ChatArea = () => {
   const { currentSessionId, sessions, models, addTurn, updateTurnResponse } = useChatStore();
@@ -81,10 +81,8 @@ export const ChatArea = () => {
     
     const context = `Please analyze and compare the differences in the responses above. Highlight key distinctions in reasoning, format, and accuracy.`;
     
-    // Use the first selected model, or first enabled model
     const summarizerId = selectedModelIds[0] || models.find(m => m.enabled)?.id;
     if (summarizerId) {
-        // We inject the context as a "User Message" that contains the data
         handleSend(`${prompt}\n\n${context}`, [summarizerId]);
     }
   };

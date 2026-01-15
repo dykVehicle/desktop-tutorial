@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useChatStore } from '../store/useChatStore';
-import { ModelConfig, ModelType } from '../types';
+import type { ModelConfig, ModelType } from '../types';
 import { X, Plus, Trash2, Check } from 'lucide-react';
 
 export const SettingsModal = ({ onClose }: { onClose: () => void }) => {

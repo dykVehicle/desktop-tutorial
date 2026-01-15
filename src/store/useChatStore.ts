@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { ModelConfig, ChatSession, ChatTurn, ModelResponse } from '../types';
+import type { ModelConfig, ChatSession, ChatTurn, ModelResponse } from '../types';
 
 interface ChatState {
   models: ModelConfig[];
@@ -24,7 +24,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       models: [],
       sessions: [],
       currentSessionId: null,

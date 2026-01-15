@@ -1,4 +1,3 @@
-import React from 'react';
 import { useChatStore } from '../store/useChatStore';
 import { Plus, MessageSquare, Settings, Trash2 } from 'lucide-react';
 

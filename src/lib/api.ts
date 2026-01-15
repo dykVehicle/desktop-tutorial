@@ -1,10 +1,11 @@
-import { ModelConfig } from '../types';
+import type { ModelConfig } from '../types';
 
 export const callModelApi = async (
   model: ModelConfig,
   messages: { role: string; content: string }[],
   onChunk: (chunk: string) => void
 ): Promise<string> => {
+  // ... rest of implementation same as before
   try {
     // Default OpenAI-compatible implementation
     // This works for OpenAI, DeepSeek, OpenRouter, LocalAI (Ollama), etc.
