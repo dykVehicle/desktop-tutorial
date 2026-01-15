@@ -4,5 +4,6 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // Use relative path for both Electron and GitHub Pages compatibility
+  // GitHub Pages usually serves project sites at /<repo-name>/
+  base: '/desktop-tutorial/', 
 })

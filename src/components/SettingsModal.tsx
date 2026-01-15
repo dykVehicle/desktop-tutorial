@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useChatStore } from '../store/useChatStore';
 import type { ModelConfig, ModelType } from '../types';
 import { X, Plus, Trash2, Check } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const models = useChatStore((state) => state.models);
@@ -22,7 +23,7 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const handleSave = () => {
     if (!newModel.name || !newModel.modelName) return;
     addModel({
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       name: newModel.name,
       provider: newModel.provider as ModelType || 'openai',
       modelName: newModel.modelName,
