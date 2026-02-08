@@ -1,0 +1,37 @@
+{
+  "name": "website-to-app-demo",
+  "version": "1.0.0",
+  "description": "将网站转换为桌面应用 (Electron) 和 Android 应用 (Capacitor) 的示例",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "android:init": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dykVehicle/desktop-tutorial.git"
+  },
+  "keywords": [
+    "electron",
+    "capacitor",
+    "android",
+    "demo",
+    "wrapper"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dykVehicle/desktop-tutorial/issues"
+  },
+  "homepage": "https://github.com/dykVehicle/desktop-tutorial#readme",
+  "devDependencies": {
+    "electron": "^39.2.7"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.1",
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1"
+  }
+}

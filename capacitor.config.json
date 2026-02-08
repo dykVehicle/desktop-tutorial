@@ -1,0 +1,12 @@
+{
+  "appId": "com.cursor.agents",
+  "appName": "Cursor Agents",
+  "webDir": "www",
+  "server": {
+    "url": "https://cursor.com/cn/agents",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
