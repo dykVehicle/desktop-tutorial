@@ -54,6 +54,15 @@ agent:
   rebalance_frequency: 5  # 再平衡频率（交易日）
   confidence_decay: 0.95  # 信号衰减系数
 
+# 企业微信通知配置
+notification:
+  enabled: true
+  webhook_url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=ffde818b-8622-4c14-a18b-3447a3c40b93"
+  # 通知触发条件
+  notify_on_signal: true       # 出现交易信号时通知
+  notify_on_backtest: true     # 回测完成时通知
+  notify_on_error: true        # 系统异常时通知
+
 # 日志配置
 logging:
   level: INFO

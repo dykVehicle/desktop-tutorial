@@ -22,6 +22,7 @@ from quant_agent.data.indicators import TechnicalIndicators
 from quant_agent.core.engine import TradingEngine
 from quant_agent.backtest.backtester import BacktestResult
 from quant_agent.utils.logger import get_logger
+from quant_agent.utils.notifier import WeChatNotifier
 
 logger = get_logger("quant_agent.agent")
 
@@ -45,6 +46,8 @@ class TradingAgent:
         config: Optional[dict] = None,
         signal_threshold: float = 0.3,
         confidence_decay: float = 0.95,
+        webhook_url: Optional[str] = None,
+        notify_enabled: bool = True,
     ):
         """
         初始化交易智能体。
@@ -53,6 +56,8 @@ class TradingAgent:
             config: 配置字典
             signal_threshold: 信号阈值
             confidence_decay: 置信度衰减系数
+            webhook_url: 企业微信 Webhook 地址（可选）
+            notify_enabled: 是否启用企业微信通知
         """
         self.config = config
         self.signal_threshold = signal_threshold
@@ -60,6 +65,14 @@ class TradingAgent:
         self.engine = TradingEngine(config)
         self.strategies: list[BaseStrategy] = []
         self._signal_history: list[dict] = []
+
+        # 初始化企业微信通知器
+        notifier_config = {}
+        if config:
+            notifier_config = config.get("notification", {})
+        _webhook = webhook_url or notifier_config.get("webhook_url")
+        self.notifier = WeChatNotifier(webhook_url=_webhook)
+        self.notifier.enabled = notify_enabled
 
     def add_strategy(self, strategy: BaseStrategy):
         """
@@ -216,6 +229,13 @@ class TradingAgent:
         # 记录信号历史
         self._signal_history.append(analysis)
 
+        # 当出现非HOLD信号时，推送企业微信通知
+        if signal_type != SignalType.HOLD and self.notifier.enabled:
+            try:
+                self.notifier.send_signal_alert(analysis)
+            except Exception as e:
+                logger.warning(f"发送信号通知失败: {e}")
+
         return analysis
 
     def run_backtest(
@@ -245,6 +265,16 @@ class TradingAgent:
             f"回测完成: 总收益 {result.metrics.get('total_return', 0):.2%}, "
             f"夏普比率 {result.metrics.get('sharpe_ratio', 0):.2f}"
         )
+
+        # 推送回测报告到企业微信
+        if self.notifier.enabled:
+            try:
+                self.notifier.send_backtest_report(
+                    metrics=result.metrics,
+                    trades=result.trades,
+                )
+            except Exception as e:
+                logger.warning(f"发送回测报告通知失败: {e}")
 
         return result
 
