@@ -1,0 +1,73 @@
+# 量化交易智能体配置文件
+
+# 交易引擎配置
+engine:
+  mode: backtest  # backtest | paper | live
+  initial_capital: 1000000.0  # 初始资金
+  commission_rate: 0.001  # 手续费率 0.1%
+  slippage: 0.001  # 滑点 0.1%
+  currency: CNY
+
+# 数据配置
+data:
+  source: synthetic  # synthetic | csv | api
+  symbols:
+    - "000001.SZ"  # 平安银行
+    - "600519.SH"  # 贵州茅台
+    - "000858.SZ"  # 五粮液
+  start_date: "2024-01-01"
+  end_date: "2025-12-31"
+  frequency: daily  # daily | hourly | minute
+
+# 策略配置
+strategies:
+  ma_crossover:
+    enabled: true
+    weight: 0.4
+    short_window: 10
+    long_window: 30
+  rsi:
+    enabled: true
+    weight: 0.3
+    period: 14
+    overbought: 70
+    oversold: 30
+  macd:
+    enabled: true
+    weight: 0.3
+    fast_period: 12
+    slow_period: 26
+    signal_period: 9
+
+# 风控配置
+risk:
+  max_position_pct: 0.25  # 单个标的最大仓位占比
+  max_total_position_pct: 0.7  # 总仓位最大占比
+  stop_loss_pct: 0.07  # 止损比例 7%（放宽避免假止损）
+  take_profit_pct: 0.10  # 止盈比例 10%（缩小使盈亏比≥1.4）
+  max_drawdown_pct: 0.20  # 最大回撤限制 20%
+  max_daily_loss_pct: 0.03  # 单日最大亏损 3%
+  # 移动止损: 盈利3%后激活，从最高点回撤5%触发
+  trailing_stop_pct: 0.05
+  trailing_activation_pct: 0.03
+
+# 智能体配置
+agent:
+  signal_threshold: 0.15  # 信号阈值（降低以配合多数共识机制过滤假信号）
+  rebalance_frequency: 5  # 再平衡频率（交易日）
+  confidence_decay: 0.95  # 信号衰减系数
+
+# 企业微信通知配置
+notification:
+  enabled: true
+  webhook_url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=ffde818b-8622-4c14-a18b-3447a3c40b93"
+  # 通知触发条件
+  notify_on_signal: true       # 出现交易信号时通知
+  notify_on_backtest: true     # 回测完成时通知
+  notify_on_error: true        # 系统异常时通知
+
+# 日志配置
+logging:
+  level: INFO
+  file: logs/trading.log
+  console: true
