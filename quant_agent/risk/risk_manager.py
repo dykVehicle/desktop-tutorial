@@ -33,11 +33,11 @@ class RiskLimits:
         max_drawdown_pct: 最大回撤限制
         max_daily_loss_pct: 单日最大亏损比例
     """
-    max_position_pct: float = 0.3
-    max_total_position_pct: float = 0.8
-    stop_loss_pct: float = 0.05
-    take_profit_pct: float = 0.15
-    max_drawdown_pct: float = 0.15
+    max_position_pct: float = 0.25
+    max_total_position_pct: float = 0.7
+    stop_loss_pct: float = 0.07       # 止损放宽到7%，减少假止损
+    take_profit_pct: float = 0.10     # 止盈缩到10%，更容易触发
+    max_drawdown_pct: float = 0.20
     max_daily_loss_pct: float = 0.03
 
 
@@ -185,6 +185,47 @@ class RiskManager:
                 f"触发止盈: 盈利 {profit_pct:.2%} >= {self.limits.take_profit_pct:.0%}",
             )
         return False, "未触发止盈"
+
+    def check_trailing_stop(
+        self,
+        entry_price: float,
+        current_price: float,
+        highest_price: float,
+        trailing_pct: float = 0.05,
+        activation_pct: float = 0.03,
+    ) -> tuple[bool, str]:
+        """
+        检查是否触发移动止损。
+
+        当盈利超过 activation_pct 后激活移动止损：
+        如果价格从最高点回落超过 trailing_pct，则平仓锁定利润。
+
+        Args:
+            entry_price: 建仓价格
+            current_price: 当前价格
+            highest_price: 持仓期间最高价
+            trailing_pct: 从最高点回撤多少触发 (默认5%)
+            activation_pct: 盈利多少后激活移动止损 (默认3%)
+
+        Returns:
+            (是否触发, 原因说明)
+        """
+        if entry_price <= 0 or highest_price <= 0:
+            return False, "价格无效"
+
+        # 只有盈利超过激活阈值后才启用移动止损
+        profit_from_entry = (highest_price - entry_price) / entry_price
+        if profit_from_entry < activation_pct:
+            return False, "未达到移动止损激活条件"
+
+        # 从最高点的回撤
+        pullback = (highest_price - current_price) / highest_price
+        if pullback >= trailing_pct:
+            return (
+                True,
+                f"触发移动止损: 从高点 {highest_price:.2f} 回撤 {pullback:.2%} >= {trailing_pct:.0%}",
+            )
+        return False, "未触发移动止损"
 
     def check_max_drawdown(self, current_equity: float) -> tuple[bool, str]:
         """

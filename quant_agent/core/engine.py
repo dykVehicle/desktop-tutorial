@@ -56,15 +56,15 @@ class TradingEngine:
                 "frequency": "daily",
             },
             "risk": {
-                "max_position_pct": 0.3,
-                "max_total_position_pct": 0.8,
-                "stop_loss_pct": 0.05,
-                "take_profit_pct": 0.15,
-                "max_drawdown_pct": 0.15,
+                "max_position_pct": 0.25,
+                "max_total_position_pct": 0.7,
+                "stop_loss_pct": 0.07,
+                "take_profit_pct": 0.10,
+                "max_drawdown_pct": 0.20,
                 "max_daily_loss_pct": 0.03,
             },
             "agent": {
-                "signal_threshold": 0.3,
+                "signal_threshold": 0.15,
             },
         }
 

@@ -41,16 +41,19 @@ strategies:
 
 # 风控配置
 risk:
-  max_position_pct: 0.3  # 单个标的最大仓位占比
-  max_total_position_pct: 0.8  # 总仓位最大占比
-  stop_loss_pct: 0.05  # 止损比例 5%
-  take_profit_pct: 0.15  # 止盈比例 15%
-  max_drawdown_pct: 0.15  # 最大回撤限制 15%
+  max_position_pct: 0.25  # 单个标的最大仓位占比
+  max_total_position_pct: 0.7  # 总仓位最大占比
+  stop_loss_pct: 0.07  # 止损比例 7%（放宽避免假止损）
+  take_profit_pct: 0.10  # 止盈比例 10%（缩小使盈亏比≥1.4）
+  max_drawdown_pct: 0.20  # 最大回撤限制 20%
   max_daily_loss_pct: 0.03  # 单日最大亏损 3%
+  # 移动止损: 盈利3%后激活，从最高点回撤5%触发
+  trailing_stop_pct: 0.05
+  trailing_activation_pct: 0.03
 
 # 智能体配置
 agent:
-  signal_threshold: 0.3  # 信号阈值，超过此值才产生交易信号
+  signal_threshold: 0.15  # 信号阈值（降低以配合多数共识机制过滤假信号）
   rebalance_frequency: 5  # 再平衡频率（交易日）
   confidence_decay: 0.95  # 信号衰减系数
 

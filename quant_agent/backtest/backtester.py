@@ -56,6 +56,30 @@ class BacktestResult:
             else:
                 lines.append(f"  {key}: {value}")
         lines.append("=" * 60)
+
+        # 亏损归因诊断
+        if self.trades:
+            sell_trades = [t for t in self.trades if t["side"] == "sell"]
+            if sell_trades:
+                winning = [t for t in sell_trades if t["pnl"] > 0]
+                losing = [t for t in sell_trades if t["pnl"] <= 0]
+                total_commission = sum(t["commission"] for t in self.trades)
+                lines.append("")
+                lines.append("  --- 交易诊断 ---")
+                lines.append(f"  总手续费: {total_commission:,.2f}")
+                if winning:
+                    avg_win = sum(t["pnl"] for t in winning) / len(winning)
+                    lines.append(f"  平均盈利: +{avg_win:,.2f}")
+                if losing:
+                    avg_loss = sum(t["pnl"] for t in losing) / len(losing)
+                    lines.append(f"  平均亏损: {avg_loss:,.2f}")
+                if winning and losing:
+                    ratio = abs(avg_win / avg_loss)
+                    lines.append(f"  盈亏比: {ratio:.2f}")
+                    if ratio < 1.0:
+                        lines.append(f"  ⚠ 盈亏比<1: 平均每笔赚的不够亏的多")
+                lines.append("=" * 60)
+
         return "\n".join(lines)
 
 
@@ -110,6 +134,12 @@ class Backtester:
         executor = OrderExecutor(self.commission_rate, self.slippage)
         risk_manager.update_peak_equity(self.initial_capital)
 
+        # 跟踪每个持仓的历史最高价（用于移动止损）
+        position_high: dict[str, float] = {}
+        # 交易冷却期: 同一标的买入/卖出后N天内不再交易
+        last_trade_date: dict[str, int] = {}  # symbol -> 上次交易的日期索引
+        trade_cooldown = 10  # 冷却10个交易日
+
         # 为每个标的计算技术指标
         enriched_data = {}
         for symbol, df in data_dict.items():
@@ -155,10 +185,19 @@ class Backtester:
                     prices[symbol] = df.loc[date, "close"]
             portfolio.update_prices(prices)
 
-            # 检查止损止盈
-            self._check_stop_loss_take_profit(
-                portfolio, risk_manager, executor, prices, date_str
+            # 更新持仓最高价
+            for symbol, price in prices.items():
+                if symbol in portfolio.positions:
+                    if symbol not in position_high or price > position_high[symbol]:
+                        position_high[symbol] = price
+
+            # 检查止损止盈（含移动止损）
+            closed_symbols = self._check_stop_loss_take_profit(
+                portfolio, risk_manager, executor, prices, date_str, position_high
             )
+            # 清除已平仓标的的最高价记录
+            for sym in closed_symbols:
+                position_high.pop(sym, None)
 
             # 检查最大回撤
             drawdown_hit, _ = risk_manager.check_max_drawdown(portfolio.total_equity)
@@ -167,7 +206,7 @@ class Backtester:
                 portfolio.record_equity(date_str)
                 continue
 
-            # 融合各策略信号
+            # 融合各策略信号（近期信号窗口共识机制）
             for symbol in data_dict.keys():
                 if symbol not in prices:
                     continue
@@ -175,25 +214,54 @@ class Backtester:
                 combined_strength = 0.0
                 total_weight = 0.0
                 signal_reasons = []
+                buy_count = 0
+                sell_count = 0
+
+                # 回溯近5个交易日的信号，取每个策略的最近信号
+                lookback = 5
+                date_idx = all_dates.index(date)
+                recent_dates = [str(all_dates[max(0, date_idx - d)]) for d in range(lookback)]
 
                 for strategy in strategies:
-                    sig = strategy_signals[strategy.name][symbol].get(date_str)
-                    if sig:
-                        combined_strength += sig.strength * strategy.weight
+                    # 查找该策略在近期窗口内的最新信号
+                    recent_sig = None
+                    for rd in recent_dates:
+                        sig = strategy_signals[strategy.name][symbol].get(rd)
+                        if sig:
+                            recent_sig = sig
+                            break
+
+                    if recent_sig:
+                        combined_strength += recent_sig.strength * strategy.weight
                         total_weight += strategy.weight
                         signal_reasons.append(
-                            f"{strategy.name}: {sig.signal_type.value} ({sig.strength:.2f})"
+                            f"{strategy.name}: {recent_sig.signal_type.value} ({recent_sig.strength:.2f})"
                         )
+                        if recent_sig.signal_type == SignalType.BUY:
+                            buy_count += 1
+                        elif recent_sig.signal_type == SignalType.SELL:
+                            sell_count += 1
 
                 if total_weight > 0:
                     combined_strength /= total_weight
 
-                # 根据融合信号执行交易
-                if abs(combined_strength) >= signal_threshold:
+                # 多数共识: 至少2个策略近期方向一致才确认信号
+                has_consensus = (buy_count >= 2 and combined_strength > 0) or \
+                                (sell_count >= 2 and combined_strength < 0)
+
+                # 根据融合信号执行交易（需满足阈值 + 共识 + 冷却期）
+                if abs(combined_strength) >= signal_threshold and has_consensus:
+                    # 冷却期检查: 避免同一标的频繁交易
+                    current_idx = all_dates.index(date)
+                    if symbol in last_trade_date:
+                        days_since = current_idx - last_trade_date[symbol]
+                        if days_since < trade_cooldown:
+                            continue  # 冷却期内跳过
+
                     price = prices[symbol]
 
-                    if combined_strength > 0:
-                        # 买入信号
+                    if combined_strength > 0 and symbol not in portfolio.positions:
+                        # 买入信号（仅在无持仓时买入，避免重复加仓）
                         quantity = risk_manager.calculate_position_size(
                             portfolio_value=portfolio.total_equity,
                             price=price,
@@ -207,13 +275,16 @@ class Backtester:
                                 price=price,
                                 date=date_str,
                             )
-                            executor.execute_order(order, portfolio, risk_manager)
+                            result_order = executor.execute_order(order, portfolio, risk_manager)
+                            if result_order.status.value == "filled":
+                                position_high[symbol] = price
+                                last_trade_date[symbol] = current_idx
 
                     elif combined_strength < 0:
                         # 卖出信号
                         if symbol in portfolio.positions:
                             pos = portfolio.positions[symbol]
-                            sell_quantity = pos.quantity  # 全部卖出
+                            sell_quantity = pos.quantity
                             order = executor.create_order(
                                 symbol=symbol,
                                 side=OrderSide.SELL,
@@ -221,7 +292,10 @@ class Backtester:
                                 price=price,
                                 date=date_str,
                             )
-                            executor.execute_order(order, portfolio, risk_manager)
+                            result_order = executor.execute_order(order, portfolio, risk_manager)
+                            if result_order.status.value == "filled":
+                                position_high.pop(symbol, None)
+                                last_trade_date[symbol] = current_idx
 
             # 记录权益
             risk_manager.update_peak_equity(portfolio.total_equity)
@@ -237,8 +311,14 @@ class Backtester:
         executor: OrderExecutor,
         prices: dict[str, float],
         date_str: str,
-    ):
-        """检查并执行止损止盈。"""
+        position_high: Optional[dict[str, float]] = None,
+    ) -> list[str]:
+        """
+        检查并执行止损止盈，含移动止损。
+
+        Returns:
+            已平仓的标的代码列表
+        """
         symbols_to_close = []
 
         for symbol, pos in portfolio.positions.items():
@@ -247,7 +327,7 @@ class Backtester:
 
             current_price = prices[symbol]
 
-            # 检查止损
+            # 1. 检查硬止损
             stop_loss, reason = risk_manager.check_stop_loss(
                 pos.avg_price, current_price
             )
@@ -255,7 +335,19 @@ class Backtester:
                 symbols_to_close.append((symbol, pos.quantity, current_price, reason))
                 continue
 
-            # 检查止盈
+            # 2. 检查移动止损（优先于硬止盈，锁定利润）
+            if position_high:
+                highest = position_high.get(symbol, current_price)
+                trailing, reason = risk_manager.check_trailing_stop(
+                    entry_price=pos.avg_price,
+                    current_price=current_price,
+                    highest_price=highest,
+                )
+                if trailing:
+                    symbols_to_close.append((symbol, pos.quantity, current_price, reason))
+                    continue
+
+            # 3. 检查硬止盈
             take_profit, reason = risk_manager.check_take_profit(
                 pos.avg_price, current_price
             )
@@ -263,8 +355,9 @@ class Backtester:
                 symbols_to_close.append((symbol, pos.quantity, current_price, reason))
 
         # 执行平仓
+        closed_symbols = []
         for symbol, quantity, price, reason in symbols_to_close:
-            logger.info(f"止损止盈: {symbol} - {reason}")
+            logger.info(f"风控平仓: {symbol} - {reason}")
             order = executor.create_order(
                 symbol=symbol,
                 side=OrderSide.SELL,
@@ -273,6 +366,9 @@ class Backtester:
                 date=date_str,
             )
             executor.execute_order(order, portfolio)
+            closed_symbols.append(symbol)
+
+        return closed_symbols
 
     def _generate_result(
         self, portfolio: Portfolio, executor: OrderExecutor
