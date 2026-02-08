@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化交易智能体</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- 侧边导航 -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">📊</div>
+            <h1>QuantAgent</h1>
+            <p class="subtitle">量化交易智能体</p>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-page="dashboard">
+                <span class="nav-icon">🏠</span>
+                <span>仪表盘</span>
+            </li>
+            <li class="nav-item" data-page="backtest">
+                <span class="nav-icon">🔬</span>
+                <span>回测引擎</span>
+            </li>
+            <li class="nav-item" data-page="analysis">
+                <span class="nav-icon">📡</span>
+                <span>信号分析</span>
+            </li>
+            <li class="nav-item" data-page="config">
+                <span class="nav-icon">⚙️</span>
+                <span>策略配置</span>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <div id="market-status" class="status-badge">加载中...</div>
+            <div id="clock" class="clock"></div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 仪表盘 -->
+        <section id="page-dashboard" class="page active">
+            <div class="page-header">
+                <h2>系统仪表盘</h2>
+                <span class="badge" id="data-source-badge">合成数据</span>
+            </div>
+            <div class="cards-grid">
+                <div class="card stat-card">
+                    <div class="stat-icon green">💰</div>
+                    <div class="stat-info">
+                        <span class="stat-label">初始资金</span>
+                        <span class="stat-value" id="dash-capital">¥1,000,000</span>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon blue">📈</div>
+                    <div class="stat-info">
+                        <span class="stat-label">策略数量</span>
+                        <span class="stat-value">3</span>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon purple">🎯</div>
+                    <div class="stat-info">
+                        <span class="stat-label">信号阈值</span>
+                        <span class="stat-value">0.15</span>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon orange">🛡️</div>
+                    <div class="stat-info">
+                        <span class="stat-label">止损 / 止盈</span>
+                        <span class="stat-value">7% / 10%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cards-row">
+                <div class="card flex-2">
+                    <h3>策略组合</h3>
+                    <div class="strategy-list">
+                        <div class="strategy-item">
+                            <div class="strategy-header">
+                                <span class="strategy-name">📐 MA 均线交叉</span>
+                                <span class="strategy-weight">权重 40%</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress" style="width:40%"></div></div>
+                            <p class="strategy-desc">短期均线上穿/下穿长期均线，含60日趋势过滤</p>
+                        </div>
+                        <div class="strategy-item">
+                            <div class="strategy-header">
+                                <span class="strategy-name">📊 RSI 超买超卖</span>
+                                <span class="strategy-weight">权重 30%</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress" style="width:30%"></div></div>
+                            <p class="strategy-desc">RSI指标超买(>70)超卖(<30)反转信号</p>
+                        </div>
+                        <div class="strategy-item">
+                            <div class="strategy-header">
+                                <span class="strategy-name">📉 MACD 交叉</span>
+                                <span class="strategy-weight">权重 30%</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress" style="width:30%"></div></div>
+                            <p class="strategy-desc">MACD柱状图零轴穿越，趋势确认信号</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card flex-1">
+                    <h3>风控规则</h3>
+                    <div class="risk-rules">
+                        <div class="rule"><span>止损线</span><span class="val red">-7%</span></div>
+                        <div class="rule"><span>止盈线</span><span class="val green">+10%</span></div>
+                        <div class="rule"><span>移动止损</span><span class="val blue">盈3%后追踪5%</span></div>
+                        <div class="rule"><span>单标的上限</span><span class="val">25%</span></div>
+                        <div class="rule"><span>总仓位上限</span><span class="val">70%</span></div>
+                        <div class="rule"><span>最大回撤</span><span class="val red">20%</span></div>
+                        <div class="rule"><span>信号共识</span><span class="val blue">≥2策略同向</span></div>
+                        <div class="rule"><span>交易冷却</span><span class="val">10个交易日</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 回测引擎 -->
+        <section id="page-backtest" class="page">
+            <div class="page-header">
+                <h2>回测引擎</h2>
+            </div>
+            <div class="cards-row">
+                <div class="card flex-1">
+                    <h3>回测参数</h3>
+                    <form id="backtest-form">
+                        <div class="form-group">
+                            <label>标的选择</label>
+                            <div class="checkbox-group" id="symbol-checkboxes">
+                                <label class="checkbox"><input type="checkbox" value="000001.SZ" checked> 000001.SZ 平安银行</label>
+                                <label class="checkbox"><input type="checkbox" value="600519.SH" checked> 600519.SH 贵州茅台</label>
+                                <label class="checkbox"><input type="checkbox" value="000858.SZ"> 000858.SZ 五粮液</label>
+                                <label class="checkbox"><input type="checkbox" value="601318.SH"> 601318.SH 中国平安</label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>开始日期</label>
+                                <input type="date" id="bt-start" value="2024-01-01">
+                            </div>
+                            <div class="form-group">
+                                <label>结束日期</label>
+                                <input type="date" id="bt-end" value="2025-06-30">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>初始资金</label>
+                                <input type="number" id="bt-capital" value="1000000" step="100000">
+                            </div>
+                            <div class="form-group">
+                                <label>信号阈值</label>
+                                <input type="number" id="bt-threshold" value="0.15" step="0.05" min="0.05" max="0.9">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>止损比例</label>
+                                <input type="number" id="bt-stoploss" value="0.07" step="0.01" min="0.01" max="0.3">
+                            </div>
+                            <div class="form-group">
+                                <label>止盈比例</label>
+                                <input type="number" id="bt-takeprofit" value="0.10" step="0.01" min="0.01" max="0.5">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btn-backtest">
+                            <span class="btn-text">🚀 运行回测</span>
+                            <span class="btn-loading" style="display:none">⏳ 运行中...</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card flex-2" id="backtest-results" style="display:none">
+                    <h3>回测结果</h3>
+                    <div class="metrics-grid" id="bt-metrics"></div>
+                    <div class="chart-container">
+                        <canvas id="equity-chart"></canvas>
+                    </div>
+                    <div class="trades-section">
+                        <h4>交易记录</h4>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="trades-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>日期</th>
+                                        <th>标的</th>
+                                        <th>方向</th>
+                                        <th>数量</th>
+                                        <th>价格</th>
+                                        <th>手续费</th>
+                                        <th>盈亏</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 信号分析 -->
+        <section id="page-analysis" class="page">
+            <div class="page-header">
+                <h2>信号分析</h2>
+            </div>
+            <div class="cards-row">
+                <div class="card flex-1">
+                    <h3>分析参数</h3>
+                    <form id="analyze-form">
+                        <div class="form-group">
+                            <label>选择标的</label>
+                            <select id="az-symbol">
+                                <option value="000001.SZ">000001.SZ 平安银行</option>
+                                <option value="600519.SH">600519.SH 贵州茅台</option>
+                                <option value="000858.SZ">000858.SZ 五粮液</option>
+                                <option value="601318.SH">601318.SH 中国平安</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>开始日期</label>
+                                <input type="date" id="az-start" value="2024-01-01">
+                            </div>
+                            <div class="form-group">
+                                <label>结束日期</label>
+                                <input type="date" id="az-end" value="2025-06-30">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btn-analyze">
+                            <span class="btn-text">📡 分析信号</span>
+                            <span class="btn-loading" style="display:none">⏳ 分析中...</span>
+                        </button>
+                    </form>
+                </div>
+                <div class="card flex-2" id="analysis-results" style="display:none">
+                    <h3 id="az-title">分析结果</h3>
+                    <div class="signal-summary" id="az-summary"></div>
+                    <div class="chart-container">
+                        <canvas id="price-chart"></canvas>
+                    </div>
+                    <div class="chart-container" style="height:200px">
+                        <canvas id="rsi-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 策略配置 -->
+        <section id="page-config" class="page">
+            <div class="page-header">
+                <h2>策略配置</h2>
+            </div>
+            <div class="cards-row">
+                <div class="card flex-1">
+                    <h3>📐 MA 均线交叉策略</h3>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>短期均线周期</label>
+                            <input type="range" min="3" max="30" value="10" id="cfg-ma-short" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">10</span>
+                        </div>
+                        <div class="form-group">
+                            <label>长期均线周期</label>
+                            <input type="range" min="15" max="120" value="30" id="cfg-ma-long" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">30</span>
+                        </div>
+                        <div class="form-group">
+                            <label>策略权重</label>
+                            <input type="range" min="0" max="100" value="40" id="cfg-ma-weight" oninput="this.nextElementSibling.textContent=this.value+'%'">
+                            <span class="range-val">40%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card flex-1">
+                    <h3>📊 RSI 策略</h3>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>RSI 周期</label>
+                            <input type="range" min="5" max="30" value="14" id="cfg-rsi-period" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">14</span>
+                        </div>
+                        <div class="form-group">
+                            <label>超买阈值</label>
+                            <input type="range" min="60" max="90" value="70" id="cfg-rsi-ob" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">70</span>
+                        </div>
+                        <div class="form-group">
+                            <label>超卖阈值</label>
+                            <input type="range" min="10" max="40" value="30" id="cfg-rsi-os" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">30</span>
+                        </div>
+                        <div class="form-group">
+                            <label>策略权重</label>
+                            <input type="range" min="0" max="100" value="30" id="cfg-rsi-weight" oninput="this.nextElementSibling.textContent=this.value+'%'">
+                            <span class="range-val">30%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card flex-1">
+                    <h3>📉 MACD 策略</h3>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>快线周期</label>
+                            <input type="range" min="5" max="20" value="12" id="cfg-macd-fast" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">12</span>
+                        </div>
+                        <div class="form-group">
+                            <label>慢线周期</label>
+                            <input type="range" min="15" max="40" value="26" id="cfg-macd-slow" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">26</span>
+                        </div>
+                        <div class="form-group">
+                            <label>信号线周期</label>
+                            <input type="range" min="3" max="15" value="9" id="cfg-macd-signal" oninput="this.nextElementSibling.textContent=this.value">
+                            <span class="range-val">9</span>
+                        </div>
+                        <div class="form-group">
+                            <label>策略权重</label>
+                            <input type="range" min="0" max="100" value="30" id="cfg-macd-weight" oninput="this.nextElementSibling.textContent=this.value+'%'">
+                            <span class="range-val">30%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="config-note">
+                <p>💡 修改配置后，返回「回测引擎」页面运行回测即可应用新参数。策略权重建议保持总和为100%。</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
