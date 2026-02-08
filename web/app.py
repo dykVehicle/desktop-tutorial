@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
@@ -27,6 +28,14 @@ from quant_agent.data.indicators import TechnicalIndicators
 from quant_agent.utils.timezone import beijing_str, get_market_status, is_trading_hours
 
 app = FastAPI(title="量化交易智能体", version="0.1.0")
+
+# CORS - 允许公网访问
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 静态文件和模板
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
