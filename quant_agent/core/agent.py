@@ -23,6 +23,7 @@ from quant_agent.core.engine import TradingEngine
 from quant_agent.backtest.backtester import BacktestResult
 from quant_agent.utils.logger import get_logger
 from quant_agent.utils.notifier import WeChatNotifier
+from quant_agent.utils.timezone import is_trading_hours, get_market_status, beijing_str
 
 logger = get_logger("quant_agent.agent")
 
@@ -231,8 +232,15 @@ class TradingAgent:
 
         # 当出现非HOLD信号时，推送企业微信通知
         if signal_type != SignalType.HOLD and self.notifier.enabled:
+            # 获取数据来源
+            data_source = "synthetic"
+            if self.config:
+                data_source = self.config.get("data", {}).get("source", "synthetic")
+
             try:
-                self.notifier.send_signal_alert(analysis)
+                self.notifier.send_signal_alert(
+                    analysis, data_source=data_source
+                )
             except Exception as e:
                 logger.warning(f"发送信号通知失败: {e}")
 
@@ -268,10 +276,16 @@ class TradingAgent:
 
         # 推送回测报告到企业微信
         if self.notifier.enabled:
+            # 获取数据来源
+            data_source = "synthetic"
+            if self.config:
+                data_source = self.config.get("data", {}).get("source", "synthetic")
+
             try:
                 self.notifier.send_backtest_report(
                     metrics=result.metrics,
                     trades=result.trades,
+                    data_source=data_source,
                 )
             except Exception as e:
                 logger.warning(f"发送回测报告通知失败: {e}")

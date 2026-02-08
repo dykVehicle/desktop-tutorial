@@ -4,18 +4,24 @@
 提供向企业微信群发送通知的功能，支持：
 - 文本消息（text）
 - Markdown 消息（markdown）
-- 回测报告推送
-- 交易信号推送
+- 回测报告推送（明确标注为回测/模拟数据）
+- 交易信号推送（标注市场状态和数据来源）
 - 异常告警推送
+
+所有时间戳统一使用北京时间 (UTC+8)。
 """
 
 import json
 import urllib.request
 import urllib.error
 from typing import Optional
-from datetime import datetime
 
 from quant_agent.utils.logger import get_logger
+from quant_agent.utils.timezone import (
+    beijing_str,
+    is_trading_hours,
+    get_market_status,
+)
 
 logger = get_logger("quant_agent.notifier")
 
@@ -32,6 +38,7 @@ class WeChatNotifier:
 
     通过企业微信群机器人 Webhook 发送消息通知。
     支持文本消息和 Markdown 格式消息。
+    所有时间戳使用北京时间。
     """
 
     def __init__(self, webhook_url: Optional[str] = None):
@@ -143,18 +150,36 @@ class WeChatNotifier:
         }
         return self._send_request(payload)
 
-    def send_backtest_report(self, metrics: dict, trades: Optional[list] = None) -> dict:
+    def send_backtest_report(
+        self,
+        metrics: dict,
+        trades: Optional[list] = None,
+        data_source: str = "synthetic",
+    ) -> dict:
         """
         发送回测报告到企业微信。
+
+        注意：报告会明确标注为【历史回测】，并注明数据来源，
+        避免与实盘交易混淆。
 
         Args:
             metrics: 回测绩效指标字典
             trades: 交易记录列表（可选）
+            data_source: 数据来源 ("synthetic"=合成模拟 | "csv"=历史文件 | "api"=实时API)
 
         Returns:
             发送结果
         """
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = beijing_str()
+        market_status = get_market_status()
+
+        # 数据来源标签
+        source_labels = {
+            "synthetic": "🔬 合成模拟数据",
+            "csv": "📂 历史CSV数据",
+            "api": "🌐 实时API数据",
+        }
+        source_label = source_labels.get(data_source, f"📦 {data_source}")
 
         # 收益率颜色
         total_return = metrics.get("total_return", 0)
@@ -163,8 +188,11 @@ class WeChatNotifier:
 
         # 构建 Markdown 消息
         lines = [
-            "# 📊 量化交易回测报告",
-            f"> 生成时间: {now}",
+            "# 📊 量化交易 · 历史回测报告",
+            f"> ⏰ 北京时间: {now}",
+            f"> 🏛️ 市场状态: {market_status}",
+            f"> 📌 数据来源: {source_label}",
+            f"> ⚠️ **本报告为历史回测结果，非实盘交易，仅供策略评估参考**",
             "",
             "## 💰 收益概览",
             f"**初始资金**: {metrics.get('initial_capital', 0):,.0f}",
@@ -209,21 +237,39 @@ class WeChatNotifier:
         content = "\n".join(lines)
         return self.send_markdown(content)
 
-    def send_signal_alert(self, analysis: dict) -> dict:
+    def send_signal_alert(
+        self,
+        analysis: dict,
+        data_source: str = "synthetic",
+    ) -> dict:
         """
         发送交易信号提醒。
 
+        非交易时间的信号会被明确标注为非实盘信号。
+
         Args:
             analysis: 标的分析结果字典（由 TradingAgent.analyze_symbol 生成）
+            data_source: 数据来源
 
         Returns:
             发送结果
         """
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = beijing_str()
+        market_status = get_market_status()
+        trading = is_trading_hours()
+
         signal_type = analysis.get("signal_type", "hold")
         strength = analysis.get("signal_strength", 0)
         symbol = analysis.get("symbol", "N/A")
         price = analysis.get("latest_price", 0)
+
+        # 数据来源标签
+        source_labels = {
+            "synthetic": "合成模拟数据",
+            "csv": "历史CSV数据",
+            "api": "实时API数据",
+        }
+        source_label = source_labels.get(data_source, data_source)
 
         # 信号类型对应的颜色和表情
         signal_config = {
@@ -233,9 +279,23 @@ class WeChatNotifier:
         }
         color, signal_text = signal_config.get(signal_type, ("gray", "⚪ 未知"))
 
+        # 根据是否交易时间和数据来源决定标题
+        if not trading or data_source != "api":
+            title = "# 📡 交易信号（仅供参考·非实盘）"
+        else:
+            title = "# 📡 实盘交易信号提醒"
+
         lines = [
-            f"# 📡 交易信号提醒",
-            f"> {now}",
+            title,
+            f"> ⏰ 北京时间: {now}",
+            f"> 🏛️ 市场状态: {market_status}",
+            f"> 📌 数据来源: {source_label}",
+        ]
+
+        if not trading:
+            lines.append(f"> ⚠️ **当前为非交易时间，本信号基于历史数据分析，仅供参考**")
+
+        lines += [
             "",
             f"**标的**: {symbol}",
             f"**最新价格**: {price:.2f}",
@@ -269,10 +329,10 @@ class WeChatNotifier:
         Returns:
             发送结果
         """
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = beijing_str()
         lines = [
             "# ⚠️ 系统异常告警",
-            f"> {now}",
+            f"> ⏰ 北京时间: {now}",
             "",
             f"**错误信息**: {error_msg}",
         ]

@@ -2,14 +2,32 @@
 日志管理模块
 
 提供统一的日志配置和获取接口。
+所有日志时间戳统一使用北京时间 (UTC+8)。
 """
 
 import logging
 import os
+from datetime import timezone, timedelta
 from typing import Optional
 
 
 _loggers: dict[str, logging.Logger] = {}
+
+# 北京时间时区 (UTC+8)
+_BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+class _BeijingFormatter(logging.Formatter):
+    """使用北京时间的日志格式化器。"""
+
+    converter = None  # 不使用 time.localtime
+
+    def formatTime(self, record, datefmt=None):
+        from datetime import datetime
+        dt = datetime.fromtimestamp(record.created, tz=_BEIJING_TZ)
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def setup_logger(
@@ -20,6 +38,7 @@ def setup_logger(
 ) -> logging.Logger:
     """
     设置并返回一个日志记录器。
+    时间戳统一使用北京时间 (UTC+8)。
 
     Args:
         name: 日志记录器名称
@@ -38,7 +57,7 @@ def setup_logger(
     logger.handlers.clear()
     logger.propagate = False  # 防止日志向父logger传播导致重复输出
 
-    formatter = logging.Formatter(
+    formatter = _BeijingFormatter(
         "%(asctime)s | %(name)s | %(levelname)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )

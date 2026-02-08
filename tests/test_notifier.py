@@ -177,6 +177,32 @@ class TestSendBacktestReport:
         assert "回测报告" in content
         assert "1,000,000" in content
         assert "夏普比率" in content
+        # 应标注为历史回测 + 非实盘
+        assert "历史回测" in content
+        assert "非实盘" in content or "仅供" in content
+        # 应包含北京时间标注
+        assert "北京时间" in content
+        # 应标注数据来源
+        assert "数据来源" in content
+
+    @patch("quant_agent.utils.notifier.urllib.request.urlopen")
+    def test_report_with_data_source(self, mock_urlopen, notifier, sample_metrics):
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"errcode": 0, "errmsg": "ok"}
+        ).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = notifier.send_backtest_report(sample_metrics, data_source="csv")
+        assert result["errcode"] == 0
+
+        call_args = mock_urlopen.call_args
+        request = call_args[0][0]
+        body = json.loads(request.data.decode("utf-8"))
+        content = body["markdown"]["content"]
+        assert "CSV" in content
 
     @patch("quant_agent.utils.notifier.urllib.request.urlopen")
     def test_negative_return_report(self, mock_urlopen, notifier):
@@ -238,6 +264,9 @@ class TestSendSignalAlert:
         assert "000001.SZ" in content
         assert "买入" in content
         assert "MA_Crossover" in content
+        # 应包含北京时间和市场状态
+        assert "北京时间" in content
+        assert "市场状态" in content
 
     @patch("quant_agent.utils.notifier.urllib.request.urlopen")
     def test_send_sell_signal(self, mock_urlopen, notifier):
@@ -258,6 +287,27 @@ class TestSendSignalAlert:
         }
         result = notifier.send_signal_alert(analysis)
         assert result["errcode"] == 0
+
+    @patch("quant_agent.utils.notifier.urllib.request.urlopen")
+    def test_signal_with_synthetic_data_shows_reference_only(self, mock_urlopen, notifier, sample_analysis):
+        """合成数据的信号应标注为仅供参考。"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"errcode": 0, "errmsg": "ok"}
+        ).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = notifier.send_signal_alert(sample_analysis, data_source="synthetic")
+        assert result["errcode"] == 0
+
+        call_args = mock_urlopen.call_args
+        request = call_args[0][0]
+        body = json.loads(request.data.decode("utf-8"))
+        content = body["markdown"]["content"]
+        # 非实盘数据应标注为仅供参考
+        assert "仅供参考" in content or "非实盘" in content
 
 
 class TestSendErrorAlert:
@@ -280,6 +330,7 @@ class TestSendErrorAlert:
         content = body["markdown"]["content"]
         assert "异常告警" in content
         assert "数据获取超时" in content
+        assert "北京时间" in content
 
 
 class TestErrorHandling:
