@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>量化交易智能体 | QuantAgent</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="sb">
+ <div class="sb-h"><div class="logo">📊</div><h1>QuantAgent</h1><p>量化交易智能体</p></div>
+ <ul class="nav">
+  <li class="on" data-p="dash"><span>🏠</span><span>仪表盘</span></li>
+  <li data-p="bt"><span>🔬</span><span>回测引擎</span></li>
+  <li data-p="az"><span>📡</span><span>信号分析</span></li>
+  <li data-p="cfg"><span>⚙️</span><span>策略配置</span></li>
+ </ul>
+ <div class="sb-f"><div class="badge rd" id="mkt-st">休市</div><div id="clock" style="margin-top:4px"></div></div>
+</nav>
+
+<main class="main">
+<!-- ── 仪表盘 ── -->
+<section id="pg-dash" class="pg on">
+ <div class="pg-h"><h2>系统仪表盘</h2><span class="tag">🔬 合成数据 · 纯前端运算</span></div>
+ <div class="cg">
+  <div class="c sc"><div class="si gn">💰</div><div><span class="sl">初始资金</span><span class="sv">¥1,000,000</span></div></div>
+  <div class="c sc"><div class="si bl">📈</div><div><span class="sl">策略数量</span><span class="sv">3 个</span></div></div>
+  <div class="c sc"><div class="si pu">🎯</div><div><span class="sl">信号阈值</span><span class="sv">0.15</span></div></div>
+  <div class="c sc"><div class="si or">🛡️</div><div><span class="sl">止损 / 止盈</span><span class="sv">7% / 10%</span></div></div>
+ </div>
+ <div class="cr">
+  <div class="c f2"><h3>策略组合</h3>
+   <div class="stl">
+    <div class="sti"><div class="sth"><span>📐 MA 均线交叉</span><span class="stw">权重 40%</span></div><div class="pb"><div class="pbf" style="width:40%"></div></div><p class="std">短期均线上穿/下穿长期均线，含60日趋势过滤</p></div>
+    <div class="sti"><div class="sth"><span>📊 RSI 超买超卖</span><span class="stw">权重 30%</span></div><div class="pb"><div class="pbf" style="width:30%"></div></div><p class="std">RSI指标超买(>70)超卖(<30)反转信号</p></div>
+    <div class="sti"><div class="sth"><span>📉 MACD 交叉</span><span class="stw">权重 30%</span></div><div class="pb"><div class="pbf" style="width:30%"></div></div><p class="std">MACD柱状图零轴穿越，趋势确认信号</p></div>
+   </div>
+  </div>
+  <div class="c f1"><h3>风控规则</h3>
+   <div class="rr">
+    <div class="rl"><span>止损线</span><span class="rv rd">-7%</span></div>
+    <div class="rl"><span>止盈线</span><span class="rv gn">+10%</span></div>
+    <div class="rl"><span>移动止损</span><span class="rv bl">盈3%追踪5%</span></div>
+    <div class="rl"><span>单标的上限</span><span class="rv">25%</span></div>
+    <div class="rl"><span>总仓位上限</span><span class="rv">70%</span></div>
+    <div class="rl"><span>最大回撤</span><span class="rv rd">20%</span></div>
+    <div class="rl"><span>信号共识</span><span class="rv bl">≥2策略同向</span></div>
+    <div class="rl"><span>交易冷却</span><span class="rv">10 交易日</span></div>
+   </div>
+  </div>
+ </div>
+ <div class="c"><h3>⚡ 架构说明</h3><p style="font-size:13px;color:var(--t2);line-height:1.7">本系统为<b>纯静态部署</b>，所有运算（技术指标计算、策略信号生成、回测引擎执行）均在<b>浏览器端</b>完成，无需后端服务器。数据为预生成的合成模拟行情（6只标的，2023-2025年），托管在 GitHub Pages 上。</p></div>
+</section>
+
+<!-- ── 回测引擎 ── -->
+<section id="pg-bt" class="pg">
+ <div class="pg-h"><h2>回测引擎</h2></div>
+ <div class="cr">
+  <div class="c f1">
+   <h3>回测参数</h3>
+   <form id="bt-form">
+    <div class="fg"><label>标的选择</label>
+     <div class="cbg" id="sym-cb">
+      <label class="cb"><input type="checkbox" value="000001.SZ" checked> 平安银行</label>
+      <label class="cb"><input type="checkbox" value="600519.SH" checked> 贵州茅台</label>
+      <label class="cb"><input type="checkbox" value="000858.SZ"> 五粮液</label>
+      <label class="cb"><input type="checkbox" value="601318.SH"> 中国平安</label>
+      <label class="cb"><input type="checkbox" value="000333.SZ"> 美的集团</label>
+      <label class="cb"><input type="checkbox" value="600036.SH"> 招商银行</label>
+     </div>
+    </div>
+    <div class="fr"><div class="fg"><label>开始日期</label><input type="date" id="bt-s" value="2024-01-01"></div><div class="fg"><label>结束日期</label><input type="date" id="bt-e" value="2025-06-30"></div></div>
+    <div class="fr"><div class="fg"><label>初始资金</label><input type="number" id="bt-cap" value="1000000" step="100000"></div><div class="fg"><label>信号阈值</label><input type="number" id="bt-th" value="0.15" step="0.05" min="0.05" max="0.9"></div></div>
+    <div class="fr"><div class="fg"><label>止损比例</label><input type="number" id="bt-sl" value="0.07" step="0.01"></div><div class="fg"><label>止盈比例</label><input type="number" id="bt-tp" value="0.10" step="0.01"></div></div>
+    <button type="submit" class="btn btn-p" id="btn-bt">🚀 运行回测</button>
+   </form>
+  </div>
+  <div class="c f2" id="bt-res" style="display:none">
+   <h3>回测结果</h3>
+   <div class="mg" id="bt-m"></div>
+   <div class="cc"><canvas id="eq-chart"></canvas></div>
+   <h3 style="margin-top:12px">交易记录</h3>
+   <div class="tw"><table id="bt-tb"><thead><tr><th>#</th><th>日期</th><th>标的</th><th>方向</th><th>数量</th><th>价格</th><th>手续费</th><th>盈亏</th><th>原因</th></tr></thead><tbody></tbody></table></div>
+  </div>
+ </div>
+</section>
+
+<!-- ── 信号分析 ── -->
+<section id="pg-az" class="pg">
+ <div class="pg-h"><h2>信号分析</h2></div>
+ <div class="cr">
+  <div class="c f1">
+   <h3>分析参数</h3>
+   <form id="az-form">
+    <div class="fg"><label>选择标的</label>
+     <select id="az-sym">
+      <option value="000001.SZ">000001.SZ 平安银行</option>
+      <option value="600519.SH">600519.SH 贵州茅台</option>
+      <option value="000858.SZ">000858.SZ 五粮液</option>
+      <option value="601318.SH">601318.SH 中国平安</option>
+      <option value="000333.SZ">000333.SZ 美的集团</option>
+      <option value="600036.SH">600036.SH 招商银行</option>
+     </select>
+    </div>
+    <div class="fr"><div class="fg"><label>开始日期</label><input type="date" id="az-s" value="2024-01-01"></div><div class="fg"><label>结束日期</label><input type="date" id="az-e" value="2025-06-30"></div></div>
+    <button type="submit" class="btn btn-p">📡 分析信号</button>
+   </form>
+  </div>
+  <div class="c f2" id="az-res" style="display:none">
+   <h3 id="az-title">分析结果</h3>
+   <div class="ss" id="az-sum"></div>
+   <div class="cc"><canvas id="pr-chart"></canvas></div>
+   <div class="cc" style="height:180px"><canvas id="rsi-chart"></canvas></div>
+  </div>
+ </div>
+</section>
+
+<!-- ── 策略配置 ── -->
+<section id="pg-cfg" class="pg">
+ <div class="pg-h"><h2>策略配置</h2></div>
+ <div class="cr">
+  <div class="c f1"><h3>📐 MA 均线交叉</h3>
+   <div class="fg"><label>短期均线</label><input type="range" min="3" max="30" value="10" id="c-ms" oninput="this.nextElementSibling.textContent=this.value"><span class="rval">10</span></div>
+   <div class="fg"><label>长期均线</label><input type="range" min="15" max="120" value="30" id="c-ml" oninput="this.nextElementSibling.textContent=this.value"><span class="rval">30</span></div>
+   <div class="fg"><label>策略权重</label><input type="range" min="0" max="100" value="40" id="c-mw" oninput="this.nextElementSibling.textContent=this.value+'%'"><span class="rval">40%</span></div>
+  </div>
+  <div class="c f1"><h3>📊 RSI 策略</h3>
+   <div class="fg"><label>RSI 周期</label><input type="range" min="5" max="30" value="14" id="c-rp" oninput="this.nextElementSibling.textContent=this.value"><span class="rval">14</span></div>
+   <div class="fg"><label>策略权重</label><input type="range" min="0" max="100" value="30" id="c-rw" oninput="this.nextElementSibling.textContent=this.value+'%'"><span class="rval">30%</span></div>
+  </div>
+  <div class="c f1"><h3>📉 MACD 策略</h3>
+   <div class="fg"><label>快线周期</label><input type="range" min="5" max="20" value="12" id="c-mf" oninput="this.nextElementSibling.textContent=this.value"><span class="rval">12</span></div>
+   <div class="fg"><label>慢线周期</label><input type="range" min="15" max="40" value="26" id="c-msl" oninput="this.nextElementSibling.textContent=this.value"><span class="rval">26</span></div>
+   <div class="fg"><label>策略权重</label><input type="range" min="0" max="100" value="30" id="c-mcw" oninput="this.nextElementSibling.textContent=this.value+'%'"><span class="rval">30%</span></div>
+  </div>
+ </div>
+ <div class="cfn">💡 修改配置后，返回「回测引擎」运行即可应用。权重建议总和=100%。所有计算在浏览器端完成，无需后端服务器。</div>
+</section>
+</main>
+
+<script src="js/market_data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
